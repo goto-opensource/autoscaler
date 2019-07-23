@@ -73,6 +73,7 @@ func FindNodesToRemove(candidates []*apiv1.Node, allNodes []*apiv1.Node, pods []
 	fastCheck bool, oldHints map[string]string, usageTracker *UsageTracker,
 	timestamp time.Time,
 	podDisruptionBudgets []*policyv1.PodDisruptionBudget,
+	emptyNodes []*apiv1.Node,
 ) (nodesToRemove []NodeToBeRemoved, unremovableNodes []*apiv1.Node, podReschedulingHints map[string]string, finalError errors.AutoscalerError) {
 
 	nodeNameToNodeInfo := scheduler_util.CreateNodeNameToInfoMap(pods, allNodes)
@@ -111,8 +112,7 @@ candidateloop:
 			continue candidateloop
 		}
 		findProblems := findPlaceFor(node.Name, podsToRemove, allNodes, nodeNameToNodeInfo, predicateChecker, oldHints, newHints,
-			usageTracker, timestamp)
-
+			usageTracker, timestamp, emptyNodes)
 		if findProblems == nil {
 			result = append(result, NodeToBeRemoved{
 				Node:             node,
@@ -194,7 +194,7 @@ func calculateUtilizationOfResource(node *apiv1.Node, nodeInfo *schedulernodeinf
 // TODO: We don't need to pass list of nodes here as they are already available in nodeInfos.
 func findPlaceFor(removedNode string, pods []*apiv1.Pod, nodes []*apiv1.Node, nodeInfos map[string]*schedulernodeinfo.NodeInfo,
 	predicateChecker *PredicateChecker, oldHints map[string]string, newHints map[string]string, usageTracker *UsageTracker,
-	timestamp time.Time) error {
+	timestamp time.Time, emptyNodes []*apiv1.Node) error {
 
 	newNodeInfos := make(map[string]*schedulernodeinfo.NodeInfo)
 	for k, v := range nodeInfos {
@@ -262,6 +262,17 @@ func findPlaceFor(removedNode string, pods []*apiv1.Pod, nodes []*apiv1.Node, no
 		if !foundPlace {
 			for _, node := range shuffledNodes {
 				if node.Name == removedNode {
+					continue
+				}
+				nodeEmpty := false
+				for _, emptyNode := range emptyNodes {
+					if emptyNode.Name == node.Name {
+						nodeEmpty = true
+						break
+					}
+				}
+				if nodeEmpty {
+					// don't consider empty, unneeded nodes because they will be removed soon anyways and doesn't make much sense to move pods there
 					continue
 				}
 				if tryNodeForPod(node.Name, pod, predicateMeta) {
