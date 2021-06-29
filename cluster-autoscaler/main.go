@@ -172,6 +172,7 @@ var (
 
 	ignoreTaintsFlag                   = multiStringFlag("ignore-taint", "Specifies a taint to ignore in node templates when considering to scale a node group")
 	balancingIgnoreLabelsFlag          = multiStringFlag("balancing-ignore-label", "Specifies a label to ignore in addition to the basic and cloud-provider set of labels when comparing if two node groups are similar")
+	balancingLabelsFlag                = multiStringFlag("balancing-label", "Specifies a label to use for comparing if two node groups are similar, rather than the built in heuristics. Setting this flag disables all other comparison logic, and cannot be combined with --balancing-ignore-label.")
 	awsUseStaticInstanceList           = flag.Bool("aws-use-static-instance-list", false, "Should CA fetch instance types in runtime or use a static list. AWS only")
 	concurrentGceRefreshes             = flag.Int("gce-concurrent-refreshes", 1, "Maximum number of concurrent refreshes per cloud object type.")
 	enableProfiling                    = flag.Bool("profiling", false, "Is debug/pprof endpoint enabled")
@@ -250,6 +251,7 @@ func createAutoscalingOptions() config.AutoscalingOptions {
 		NewPodScaleUpDelay:                 *newPodScaleUpDelay,
 		IgnoredTaints:                      *ignoreTaintsFlag,
 		BalancingExtraIgnoredLabels:        *balancingIgnoreLabelsFlag,
+		BalancingLabels:                    *balancingLabelsFlag,
 		KubeConfigPath:                     *kubeConfigFile,
 		NodeDeletionDelayTimeout:           *nodeDeletionDelayTimeout,
 		AWSUseStaticInstanceList:           *awsUseStaticInstanceList,
@@ -320,19 +322,25 @@ func buildAutoscaler() (core.Autoscaler, error) {
 	opts.Processors = ca_processors.DefaultProcessors()
 	opts.Processors.PodListProcessor = core.NewFilterOutSchedulablePodListProcessor()
 
-	nodeInfoComparatorBuilder := nodegroupset.CreateGenericNodeInfoComparator
-	if autoscalingOptions.CloudProviderName == cloudprovider.AzureProviderName {
-		nodeInfoComparatorBuilder = nodegroupset.CreateAzureNodeInfoComparator
-	} else if autoscalingOptions.CloudProviderName == cloudprovider.AwsProviderName {
-		nodeInfoComparatorBuilder = nodegroupset.CreateAwsNodeInfoComparator
-	} else if autoscalingOptions.CloudProviderName == cloudprovider.GceProviderName {
-		nodeInfoComparatorBuilder = nodegroupset.CreateGceNodeInfoComparator
-	} else if autoscalingOptions.CloudProviderName == cloudprovider.ClusterAPIProviderName {
-		nodeInfoComparatorBuilder = nodegroupset.CreateClusterAPINodeInfoComparator
+	var nodeInfoComparator nodegroupset.NodeInfoComparator
+	if len(autoscalingOptions.BalancingLabels) > 0 {
+		nodeInfoComparator = nodegroupset.CreateLabelNodeInfoComparator(autoscalingOptions.BalancingLabels)
+	} else {
+		nodeInfoComparatorBuilder := nodegroupset.CreateGenericNodeInfoComparator
+		if autoscalingOptions.CloudProviderName == cloudprovider.AzureProviderName {
+			nodeInfoComparatorBuilder = nodegroupset.CreateAzureNodeInfoComparator
+		} else if autoscalingOptions.CloudProviderName == cloudprovider.AwsProviderName {
+			nodeInfoComparatorBuilder = nodegroupset.CreateAwsNodeInfoComparator
+		} else if autoscalingOptions.CloudProviderName == cloudprovider.GceProviderName {
+			nodeInfoComparatorBuilder = nodegroupset.CreateGceNodeInfoComparator
+		} else if autoscalingOptions.CloudProviderName == cloudprovider.ClusterAPIProviderName {
+			nodeInfoComparatorBuilder = nodegroupset.CreateClusterAPINodeInfoComparator
+		}
+		nodeInfoComparator = nodeInfoComparatorBuilder(autoscalingOptions.BalancingExtraIgnoredLabels)
 	}
 
 	opts.Processors.NodeGroupSetProcessor = &nodegroupset.BalancingNodeGroupSetProcessor{
-		Comparator: nodeInfoComparatorBuilder(autoscalingOptions.BalancingExtraIgnoredLabels),
+		Comparator: nodeInfoComparator,
 	}
 
 	// These metrics should be published only once.
