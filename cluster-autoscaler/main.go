@@ -349,7 +349,6 @@ func buildAutoscaler(debuggingSnapshotter debuggingsnapshot.DebuggingSnapshotter
 			nodeInfoComparatorBuilder = nodegroupset.CreateAwsNodeInfoComparator
 		} else if autoscalingOptions.CloudProviderName == cloudprovider.GceProviderName {
 			nodeInfoComparatorBuilder = nodegroupset.CreateGceNodeInfoComparator
-			opts.Processors.TemplateNodeInfoProvider = nodeinfosprovider.NewAnnotationNodeInfoProvider(nodeInfoCacheExpireTime)
 		} else if autoscalingOptions.CloudProviderName == cloudprovider.ClusterAPIProviderName {
 			nodeInfoComparatorBuilder = nodegroupset.CreateClusterAPINodeInfoComparator
 		}
