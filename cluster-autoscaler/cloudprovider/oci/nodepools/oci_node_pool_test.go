@@ -153,7 +153,7 @@ func (m mockManager) GetNodePoolSize(np NodePool) (int, error) {
 
 func (m mockManager) SetNodePoolSize(np NodePool, size int) error {
 	m.called = append(m.called, "set-node-pool-size")
-	panic("implement me")
+	return nil
 }
 
 func (m mockManager) DeleteInstances(np NodePool, instances []ocicommon.OciRef) error {
@@ -163,11 +163,6 @@ func (m mockManager) DeleteInstances(np NodePool, instances []ocicommon.OciRef) 
 
 func (m mockManager) InvalidateAndRefreshCache() error {
 	m.called = append(m.called, "invalidate-and-refresh-cache")
-	return nil
-}
-
-func (m mockManager) SetNodePoolSize(np NodePool, size int) error {
-	m.called = append(m.called, "set-node-pool-size")
 	return nil
 }
 
