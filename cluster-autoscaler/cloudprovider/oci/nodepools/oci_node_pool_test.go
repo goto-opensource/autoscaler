@@ -24,6 +24,7 @@ func TestDeletePastMinSize(t *testing.T) {
 	manager := &mockManager{
 		err:        nil,
 		timeOutErr: apierrors.NewTimeoutError("timeout error", 5),
+		nodePoolSize: 1,
 	}
 	np := &nodePool{
 		kubeClient: client,
@@ -52,6 +53,47 @@ func TestDeletePastMinSize(t *testing.T) {
 	}
 }
 
+func TestDeleteNodeWithoutInstanceIDFallsBackToDecreaseTargetSize(t *testing.T) {
+	client := fake.NewSimpleClientset()
+
+	manager := &mockManager{
+		nodePoolSize: 1,
+		nodes: []cloudprovider.Instance{
+			{
+				Id: "",
+				Status: &cloudprovider.InstanceStatus{
+					State: cloudprovider.InstanceCreating,
+					ErrorInfo: &cloudprovider.InstanceErrorInfo{
+						ErrorClass:   cloudprovider.OutOfResourcesErrorClass,
+						ErrorCode:    "InternalError",
+						ErrorMessage: "Out of host capacity",
+					},
+				},
+			},
+		},
+	}
+
+	np := &nodePool{
+		kubeClient: client,
+		manager:    manager,
+		minSize:    0,
+		maxSize:    10,
+		id:         "abc",
+	}
+	manager.nodePool = np
+
+	node := &apiv1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "badNode",
+		},
+	}
+
+	err := np.ForceDeleteNodes([]*apiv1.Node{node})
+	if err != nil {
+		t.Fatalf("expected fallback cleanup to succeed, got: %v", err)
+	}
+}
+
 type mockManager struct {
 	called    []string
 	nodePools []NodePool
@@ -62,6 +104,8 @@ type mockManager struct {
 	NodePoolManager
 	err        error
 	timeOutErr error
+
+	nodePoolSize int
 }
 
 func (m mockManager) Refresh() error {
@@ -101,6 +145,9 @@ func (m mockManager) GetResourceLimiter() (*cloudprovider.ResourceLimiter, error
 
 func (m mockManager) GetNodePoolSize(np NodePool) (int, error) {
 	m.called = append(m.called, "get-node-pool-size")
+	if m.nodePoolSize != 0 {
+		return m.nodePoolSize, nil
+	}
 	return np.MinSize() + 1, nil
 }
 
@@ -112,4 +159,19 @@ func (m mockManager) SetNodePoolSize(np NodePool, size int) error {
 func (m mockManager) DeleteInstances(np NodePool, instances []ocicommon.OciRef) error {
 	m.called = append(m.called, "delete-instances")
 	return m.timeOutErr
+}
+
+func (m mockManager) InvalidateAndRefreshCache() error {
+	m.called = append(m.called, "invalidate-and-refresh-cache")
+	return nil
+}
+
+func (m mockManager) SetNodePoolSize(np NodePool, size int) error {
+	m.called = append(m.called, "set-node-pool-size")
+	return nil
+}
+
+func (m mockManager) GetExistingNodePoolSizeViaCompute(np NodePool) (int, error) {
+	m.called = append(m.called, "get-existing-node-pool-size-via-compute")
+	return 0, nil
 }
