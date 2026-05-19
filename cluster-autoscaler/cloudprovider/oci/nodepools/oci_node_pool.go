@@ -166,6 +166,19 @@ func (np *nodePool) DeleteNodes(nodes []*apiv1.Node) (err error) {
 			return err
 		}
 
+		// *** ADD THIS BLOCK ***
+		// If the node has no compute instance ID, it means OCI failed to provision
+		// a compute instance (e.g. Out Of Host Capacity). The OKE node entry exists
+		// but there is nothing to delete via the DeleteNode API. Instead, decrease the
+		// target size so OKE cleans up the phantom node entry, matching the recovery
+		// path used by fixNodeGroupSize for pools with existing nodes.
+		if ociRef.InstanceID == "" {
+			klog.Warningf("Node %s in pool %s has no instance ID (possible OoHC/QuotaExceeded). "+
+				"Falling back to DecreaseTargetSize to clean up.", node.Name, np.Id())
+			return np.DecreaseTargetSize(-1)
+		}
+		// *** END ADDED BLOCK ***
+
 		refs = append(refs, ociRef)
 	}
 
