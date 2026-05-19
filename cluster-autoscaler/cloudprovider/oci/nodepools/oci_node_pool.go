@@ -177,6 +177,14 @@ func (np *nodePool) DeleteNodes(nodes []*apiv1.Node) (err error) {
 				"Falling back to DecreaseTargetSize to clean up.", node.Name, np.Id())
 			return np.DecreaseTargetSize(-1)
 		}
+		
+		belongs, err := np.Belongs(node)
+		if err != nil {
+			return err
+		}
+		if !belongs {
+			return fmt.Errorf("%s belong to a different nodepool than %s", node.Name, np.Id())
+		}
 		// *** END ADDED BLOCK ***
 
 		refs = append(refs, ociRef)
