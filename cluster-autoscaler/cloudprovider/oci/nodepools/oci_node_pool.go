@@ -154,13 +154,6 @@ func (np *nodePool) DeleteNodes(nodes []*apiv1.Node) (err error) {
 	// Each node is deleted in its own DeleteNodes call, and all the calls are in parallel
 	// we will still loop through just to future proof this function
 	for _, node := range nodes {
-		belongs, err := np.Belongs(node)
-		if err != nil {
-			return err
-		}
-		if !belongs {
-			return fmt.Errorf("%s belong to a different nodepool than %s", node.Name, np.Id())
-		}
 		ociRef, err := ocicommon.NodeToOciRef(node)
 		if err != nil {
 			return err
