@@ -88,7 +88,7 @@ func TestDeleteNodeWithoutInstanceIDFallsBackToDecreaseTargetSize(t *testing.T) 
 		},
 	}
 
-	err := np.ForceDeleteNodes([]*apiv1.Node{node})
+	err := np.DeleteNodes([]*apiv1.Node{node})
 	if err != nil {
 		t.Fatalf("expected fallback cleanup to succeed, got: %v", err)
 	}
