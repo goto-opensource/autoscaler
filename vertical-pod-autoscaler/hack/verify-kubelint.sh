@@ -20,14 +20,21 @@ set -o pipefail
 
 echo "verify-kubelint"
 
-echo "installing dependencies"
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-
-cd $(dirname "${BASH_SOURCE}")/..
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 SCRIPT_ROOT="$PWD"
 
 TOOLS_DIR="${PWD}/hack/tools/kube-api-linter"
 TOOLS_BIN_DIR="${TOOLS_DIR}/bin"
+
+# Use the custom builder's pinned version, not a newer CLI requiring a newer Go.
+GOLANGCI_LINT_VERSION=$(awk '$1 == "version:" { print $2; exit }' "${TOOLS_DIR}/.custom-gcl.yml")
+if [[ ! "${GOLANGCI_LINT_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Missing or invalid golangci-lint version in ${TOOLS_DIR}/.custom-gcl.yml" >&2
+  exit 1
+fi
+
+echo "installing dependencies"
+go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}"
 
 GOLANGCI_LINT_BIN=${GOLANGCI_LINT_BIN:-"golangci-lint"}
 GOLANGCI_LINT_KAL_BIN=${GOLANGCI_LINT_KAL_BIN:-"${TOOLS_BIN_DIR}/golangci-kube-api-linter"}
