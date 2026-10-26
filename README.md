@@ -1,3 +1,18 @@
+# GoTo fork: OCI patches and internal images
+
+This fork keeps version-specific OCI recovery backports for GoTo. Upstream Kubernetes documentation follows below.
+
+**For GoTo image builds and releases, use the [k8s-image-build guide](https://github.com/goto-dois/k8s-image-build/blob/main/README.md).** That internal repository owns the Jenkins recipe, source pins, build parameters and Artifactory publication. The 1.35 recipe and expanded guide are being added in [image-build PR #5](https://github.com/goto-dois/k8s-image-build/pull/5).
+
+- Patched source lives on version-specific branches such as [`cluster-autoscaler-goto-1.35.2-pr-9703`](https://github.com/goto-opensource/autoscaler/tree/cluster-autoscaler-goto-1.35.2-pr-9703), based on an upstream release plus the selected backport.
+- This fork's Actions run source checks and include Helm-chart release workflows. They do not publish GoTo's internal container images.
+- Internal image builds are opt-in. Selected PR builds publish development images; the documented main-branch release flow publishes release images. Opening or merging a source PR here is not the publication trigger.
+- Review a backport against its release baseline. Do not merge a versioned branch into this fork's `master` merely to obtain an internal image. Publishing an image does not deploy it.
+
+Maintain the backport for 1.35 patch updates, repinning and retesting each new source version through `k8s-image-build`. The fix is merged into upstream's 1.36 release branch in [#10109](https://github.com/kubernetes/autoscaler/pull/10109); retire our backport when adopting a qualified 1.36 release containing it.
+
+---
+
 # Kubernetes Autoscaler
 
 [![Release Charts](https://github.com/kubernetes/autoscaler/actions/workflows/chart-release.yaml/badge.svg)](https://github.com/kubernetes/autoscaler/actions/workflows/chart-release.yaml) [![CA Tests](https://github.com/kubernetes/autoscaler/actions/workflows/ca-test.yaml/badge.svg)](https://github.com/kubernetes/autoscaler/actions/workflows/ca-test.yaml) [![VPA Tests](https://github.com/kubernetes/autoscaler/actions/workflows/vpa-test.yaml/badge.svg)](https://github.com/kubernetes/autoscaler/actions/workflows/vpa-test.yaml) [![GoDoc Widget]][GoDoc]
