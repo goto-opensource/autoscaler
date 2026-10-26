@@ -9,6 +9,8 @@ This fork keeps version-specific OCI recovery backports for GoTo. Upstream Kuber
 - Internal image builds are opt-in. Selected PR builds publish development images; the documented main-branch release flow publishes release images. Opening or merging a source PR here is not the publication trigger.
 - Review a backport against its release baseline. Do not merge a versioned branch into this fork's `master` merely to obtain an internal image. Publishing an image does not deploy it.
 
+Maintain the backport for 1.35 patch updates, repinning and retesting each new source version through `k8s-image-build`. The fix is merged into upstream's 1.36 release branch in [#10109](https://github.com/kubernetes/autoscaler/pull/10109); retire our backport when adopting a qualified 1.36 release containing it.
+
 ---
 
 # Kubernetes Autoscaler
